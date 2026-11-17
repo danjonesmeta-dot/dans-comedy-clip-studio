@@ -1,0 +1,15 @@
+services:
+  comedy-clip-studio:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      UPLOAD_DIR: /data
+      WHISPER_MODEL: small
+      MAX_UPLOAD_MB: 2048
+    volumes:
+      - clip_data:/data
+    restart: unless-stopped
+
+volumes:
+  clip_data:
