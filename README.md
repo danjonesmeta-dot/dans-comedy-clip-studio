@@ -31,6 +31,6 @@ A no-hosting-cost test route is included in `colab_test.ipynb`. Open it in Googl
 
 https://colab.research.google.com/github/danjonesmeta-dot/dans-comedy-clip-studio/blob/main/colab_test.ipynb
 
-Run all cells, wait for the temporary Gradio link, then open that link on your phone and upload a test video. This uses Colab's free temporary runtime; GPU access is not guaranteed, sessions can disconnect, and files are temporary. Download exports before the session ends.
+Run all cells from top to bottom. The notebook uses Colab's own upload control, transcribes the video, displays candidate moments, and exports selected clips as a ZIP. This uses Colab's free temporary runtime; GPU access is not guaranteed, sessions can disconnect, and files are temporary. Download exports before the session ends.
 
 The hosted Docker version remains a separate deployment target; current Hugging Face Spaces documentation says free CPU hardware is not available for creating new Docker/Gradio compute Spaces on ordinary free personal accounts, so I am not relying on that route for a guaranteed-free test.
