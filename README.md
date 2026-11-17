@@ -23,3 +23,14 @@ Deploy this repository as a Docker web service on a host that supports backgroun
 
 ## Important
 This MVP has no user accounts. Do not put private or sensitive footage on a public deployment until authentication and access controls have been added. Files are stored on the server's `UPLOAD_DIR`.
+
+
+## Free phone test (Google Colab)
+
+A no-hosting-cost test route is included in `colab_test.ipynb`. Open it in Google Colab using:
+
+https://colab.research.google.com/github/danjonesmeta-dot/dans-comedy-clip-studio/blob/main/colab_test.ipynb
+
+Run all cells, wait for the temporary Gradio link, then open that link on your phone and upload a test video. This uses Colab's free temporary runtime; GPU access is not guaranteed, sessions can disconnect, and files are temporary. Download exports before the session ends.
+
+The hosted Docker version remains a separate deployment target; current Hugging Face Spaces documentation says free CPU hardware is not available for creating new Docker/Gradio compute Spaces on ordinary free personal accounts, so I am not relying on that route for a guaranteed-free test.
