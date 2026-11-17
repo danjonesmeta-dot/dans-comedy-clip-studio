@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111"><title>Dan's Comedy Clip Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#101010;--panel:#1c1c1e;--muted:#a4a4aa;--accent:#f4c542;--line:#343438}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#fff;font:16px system-ui,-apple-system,sans-serif}
+header{padding:22px 18px 14px;position:sticky;top:0;background:#101010ed;backdrop-filter:blur(12px);z-index:2;border-bottom:1px solid var(--line)}
+h1{font-size:22px;margin:0 0 5px}header p,.muted{color:var(--muted);font-size:13px;margin:0}
+main{max-width:760px;margin:auto;padding:18px 14px 60px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin:0 0 15px}
+h2{font-size:17px;margin:0 0 12px}.upload{display:block;border:1px dashed #777;border-radius:14px;padding:22px;text-align:center;margin:12px 0;color:#ddd}
+input[type=file]{width:100%;margin-top:12px}button,.download{border:0;border-radius:12px;padding:13px 16px;background:var(--accent);color:#111;font-weight:750;font-size:15px;cursor:pointer}
+button:disabled{opacity:.4}.wide{width:100%;margin-top:12px}.status{margin-top:12px;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.clip{padding:14px 0;border-top:1px solid var(--line)}.clip:first-child{border-top:0}.cliptop{display:flex;gap:10px;align-items:flex-start}.cliptop input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.cliptitle{font-weight:650;line-height:1.35}.clipmeta{font-size:12px;color:var(--muted);margin:4px 0 10px}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:8px}.times label{font-size:11px;color:var(--muted)}.times input{width:100%;background:#101010;border:1px solid #45454a;border-radius:8px;color:#fff;padding:10px;font-size:15px}
+#clips{display:none}#results{display:none}.download{display:inline-block;text-decoration:none;margin:8px 8px 0 0}
+progress{width:100%;height:8px;accent-color:var(--accent)}.note{font-size:12px;color:var(--muted);line-height:1.5}
+</style></head>
+<body>
+<header><h1>🎤 Dan's Comedy Clip Studio</h1><p>Turn a full set into short vertical clips — from your phone.</p></header>
+<main>
+<section class="panel">
+<h2>1. Upload your set</h2>
+<p class="muted">Choose a video from your phone. MP4, MOV, MKV, WEBM or M4V.</p>
+<label class="upload">📱 Select your stand-up video<input id="video" type="file" accept="video/*"></label>
+<button class="wide" id="uploadBtn">Upload & find moments</button><div class="status" id="status">Ready when you are.</div>
+</section>
+<section class="panel" id="clips"><h2>2. Review suggested moments</h2><p class="note">Tick the moments you want. Adjust start/end times in seconds. Suggestions are automated guesses — watch them before posting.</p><div id="clipList"></div><button class="wide" id="saveBtn">Save clip edits</button><button class="wide" id="exportBtn">Export selected vertical clips</button></section>
+<section class="panel" id="results"><h2>3. Download your clips</h2><div id="downloads"></div></section>
+<section class="panel"><p class="note">Your video is uploaded to the server for processing. Long videos can take a while. Keep this page open while transcription runs. The first transcription may download the selected speech model.</p></section>
+</main>
+<script>
+let jobId=null,clips=[],poller=null;
+const $=id=>document.getElementById(id);
+function msg(t){$('status').textContent=t}
+function fmt(n){return Number(n).toFixed(2)}
+function render(){
+ $('clips').style.display='block';$('clipList').innerHTML='';
+ if(!clips.length){$('clipList').textContent='No strong candidate moments found. You can still use the transcript to identify moments in a later version.';return}
+ clips.forEach((c,i)=>{
+  const el=document.createElement('div');el.className='clip';
+  const top=document.createElement('div');top.className='cliptop';
+  const check=document.createElement('input');check.type='checkbox';check.checked=!!c.selected;check.setAttribute('aria-label','Select clip');check.onchange=()=>c.selected=check.checked;
+  const title=document.createElement('div');title.className='cliptitle';title.textContent=c.title||('Suggested moment '+(i+1));
+  top.append(check,title);el.append(top);
+  const meta=document.createElement('div');meta.className='clipmeta';meta.textContent='Suggested moment '+(i+1)+' · score '+(c.score??'—');el.append(meta);
+  const times=document.createElement('div');times.className='times';
+  [['Start','start'],['End','end']].forEach(([label,key])=>{const wrap=document.createElement('label');wrap.textContent=label+' (seconds)';const input=document.createElement('input');input.type='number';input.min='0';input.step='.1';input.value=fmt(c[key]);input.onchange=()=>c[key]=Number(input.value);wrap.append(input);times.append(wrap)});
+  el.append(times);$('clipList').append(el);
+ });
+}
+async function poll(){
+ try{const r=await fetch('/api/jobs/'+jobId);const j=await r.json();
+  if(j.status==='ready'){clearInterval(poller);clips=j.clips||[];render();msg('Transcription complete. Review the suggested moments below.');}
+  else if(j.status==='error'){clearInterval(poller);msg('Processing failed: '+j.error);}
+  else msg('Processing video: '+j.status+' — this can take several minutes.');
+ }catch(e){msg('Checking processing status…');}
+}
+$('uploadBtn').onclick=async()=>{
+ const f=$('video').files[0];if(!f){msg('Choose a video first.');return}
+ $('uploadBtn').disabled=true;msg('Uploading '+f.name+'…');
+ try{const fd=new FormData();fd.append('file',f);const r=await fetch('/api/upload',{method:'POST',body:fd});const j=await r.json();if(!r.ok)throw Error(j.detail||'Upload failed');
+ jobId=j.job_id;msg('Upload complete. Transcription has started.');poller=setInterval(poll,4000);poll();
+ }catch(e){msg(e.message);$('uploadBtn').disabled=false;}
+};
+$('saveBtn').onclick=async()=>{
+ if(clips.some(c=>c.end<=c.start||c.start<0)){msg('Check the start and end times — end must be later than start.');return}
+ const r=await fetch('/api/jobs/'+jobId+'/clips',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(clips)});
+ const j=await r.json();msg(r.ok?'Saved '+j.saved+' clip edits.':(j.detail||'Could not save edits.'));
+};
+$('exportBtn').onclick=async()=>{
+ $('exportBtn').disabled=true;msg('Rendering vertical clips. This may take a few minutes…');
+ try{const r=await fetch('/api/jobs/'+jobId+'/export',{method:'POST'});const j=await r.json();if(!r.ok)throw Error(j.detail||'Export failed');
+ $('results').style.display='block';$('downloads').innerHTML='';
+ j.exports.forEach(x=>{const a=document.createElement('a');a.className='download';a.href=x.url;a.textContent='⬇ Download '+x.name;a.download=x.name;$('downloads').append(a)});
+ msg('Export complete. Download the clips to your phone.');}catch(e){msg(e.message)}finally{$('exportBtn').disabled=false}
+};
+</script></body></html>
